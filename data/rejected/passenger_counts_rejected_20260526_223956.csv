@@ -1,0 +1,2 @@
+trip_id,vehicle_id,stop_id,route_id,timestamp,boarded,alighted,current_load,capacity,_rejection_reason
+TRP_003,VH_003,STOP_03,Route_C,2026-05-26 08:10:00,,2,10,60,null boarded count

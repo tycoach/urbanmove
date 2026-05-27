@@ -1,0 +1,7 @@
+trip_id,vehicle_id,stop_id,route_id,timestamp,boarded,alighted,current_load,capacity,_rejection_reason
+TRP_0001,VH_005,STOP_07,Route_B,2026-05-26 06:00:00,,-2,99,60,null boarded count
+TRP_0026,VH_008,STOP_10,Route_D,2026-05-26 07:40:00,,21,16,60,null boarded count
+TRP_0051,VH_005,STOP_02,Route_B,2026-05-26 09:20:00,,17,23,60,null boarded count
+TRP_0076,VH_009,STOP_14,Route_D,2026-05-26 11:00:00,,12,22,60,null boarded count
+TRP_0101,VH_001,STOP_19,Route_E,2026-05-26 12:40:00,,1,34,60,null boarded count
+TRP_0126,VH_015,STOP_18,Route_C,2026-05-26 14:20:00,,8,12,60,null boarded count

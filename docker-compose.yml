@@ -1,0 +1,174 @@
+version: "3.9"
+
+# ── Shared Airflow config — applied to all Airflow services ──
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.9.1-python3.11
+  env_file: .env
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
+    PYTHONPATH: /opt/airflow
+  volumes:
+    - ./dags:/opt/airflow/dags             # DAG files — live reload on change
+    - ./pipeline:/opt/airflow/pipeline     # Pipeline modules — available to tasks
+    - ./scripts:/opt/airflow/scripts       # generate_data.py — available to tasks
+    - ./data:/opt/airflow/data             # Shared data directory
+    - airflow_logs:/opt/airflow/logs
+  depends_on:
+    postgres:
+      condition: service_healthy
+  networks:
+    - urbanmove_net
+
+
+services:
+
+  # ══════════════════════════════════════════════════════════
+  # POSTGRES
+  # Primary data store — holds all three datasets + audit log.
+  # Schema is applied automatically from sql/schema.sql
+  # on first container boot via docker-entrypoint-initdb.d.
+  # ══════════════════════════════════════════════════════════
+  postgres:
+    image: postgres:16-alpine
+    container_name: urbanmove_postgres
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB}
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"                        # Expose for local psql / pgAdmin desktop
+    volumes:
+      - postgres_data:/var/lib/postgresql/data        # Data survives container restarts
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/001_schema.sql  # Auto-runs on first boot
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - urbanmove_net
+
+
+  # ══════════════════════════════════════════════════════════
+  # AIRFLOW INIT
+  # Runs once on first boot to initialise the Airflow
+  # metadata database and create the admin user.
+  # All other Airflow services wait for this to complete.
+  # ══════════════════════════════════════════════════════════
+  airflow-init:
+    <<: *airflow-common
+    container_name: urbanmove_airflow_init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        pip install --no-cache-dir -r /opt/airflow/requirements.txt --quiet
+        airflow db upgrade
+        airflow users create \
+          --username ${_AIRFLOW_WWW_USER_USERNAME:-admin} \
+          --password ${_AIRFLOW_WWW_USER_PASSWORD:-admin} \
+          --firstname Taiwo \
+          --lastname Hassan \
+          --role Admin \
+          --email admin@urbanmove.com
+        echo "Airflow initialised."
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./pipeline:/opt/airflow/pipeline
+      - ./scripts:/opt/airflow/scripts
+      - ./data:/opt/airflow/data
+      - ./requirements.txt:/opt/airflow/requirements.txt
+      - airflow_logs:/opt/airflow/logs
+    restart: on-failure
+
+
+  # ══════════════════════════════════════════════════════════
+  # AIRFLOW SCHEDULER
+  # Reads DAGs, triggers tasks on schedule, manages retries.
+  # ══════════════════════════════════════════════════════════
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: urbanmove_airflow_scheduler
+    command: scheduler
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "airflow", "jobs", "check", "--job-type", "SchedulerJob"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+
+  # ══════════════════════════════════════════════════════════
+  # AIRFLOW WEBSERVER
+  # UI at http://localhost:8085
+  # Login: admin / admin (set in .env)
+  # ══════════════════════════════════════════════════════════
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: urbanmove_airflow_webserver
+    command: webserver
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+
+  # ══════════════════════════════════════════════════════════
+  # PGADMIN
+  # Database UI at http://localhost:5050
+  # Use this during the presentation to show data landed.
+  # Login: admin@urbanmove.com / admin
+  # ══════════════════════════════════════════════════════════
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: urbanmove_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL:    admin@urbanmove.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - urbanmove_net
+
+
+# ── Named volumes — data persists across docker compose down ──
+volumes:
+  postgres_data:
+  airflow_logs:
+  pgadmin_data:
+
+# ── Internal network — services talk to each other by name ───
+networks:
+  urbanmove_net:
+    driver: bridge

@@ -1,0 +1,3 @@
+vehicle_id,route_id,timestamp,latitude,longitude,speed_kmh,heading,status,_rejection_reason
+VH_002,Route_B,2026-05-26 08:05:00,,,30.0,180,in_service,missing GPS coordinates
+VH_005,Route_D,2026-05-26 08:20:00,9.0,7.5,20.0,45,in_service,coordinates outside Lagos bounding box

@@ -1,0 +1,11 @@
+vehicle_id,route_id,timestamp,latitude,longitude,speed_kmh,heading,status,_rejection_reason
+VH_011,Route_A,2026-05-26 06:00:00,,,-8.8,52,,missing GPS coordinates
+VH_010,Route_C,2026-05-26 07:00:00,,,30.4,157,in_service,missing GPS coordinates
+VH_004,Route_C,2026-05-26 08:00:00,,,26.0,161,in_service,missing GPS coordinates
+VH_001,Route_E,2026-05-26 09:00:00,,,55.4,343,in_service,missing GPS coordinates
+VH_008,Route_A,2026-05-26 10:00:00,,,60.9,84,out_of_service,missing GPS coordinates
+VH_008,Route_E,2026-05-26 11:00:00,,,57.2,169,,missing GPS coordinates
+VH_013,Route_C,2026-05-26 12:00:00,,,17.3,265,out_of_service,missing GPS coordinates
+VH_006,Route_D,2026-05-26 13:00:00,,,-1.0,323,in_service,missing GPS coordinates
+VH_002,Route_B,2026-05-26 14:00:00,,,74.7,59,in_service,missing GPS coordinates
+VH_011,Route_A,2026-05-26 15:00:00,,,70.9,216,in_service,missing GPS coordinates
