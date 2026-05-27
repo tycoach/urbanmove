@@ -170,7 +170,7 @@ docker compose up --build
 This starts:
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| Airflow UI | http://localhost:8080 | admin / admin |
+| Airflow UI | http://localhost:8085 | admin / admin |
 | pgAdmin | http://localhost:5050 | admin@urbanmove.com / admin |
 | PostgreSQL | localhost:5432 | see `.env` |
 
